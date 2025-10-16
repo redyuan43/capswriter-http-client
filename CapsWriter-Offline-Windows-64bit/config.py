@@ -22,6 +22,7 @@ class ClientConfig:
     api_mode = 'optimize'
     api_mode_cycle = ['optimize', 'transcribe', 'translate']
     mode_hotkey = 'ctrl+windows'
+    use_stream_api = False
 
     addr = '127.0.0.1'          # Server 地址
     port = '6016'               # Server 端口
