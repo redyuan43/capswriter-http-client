@@ -1,12 +1,15 @@
 const { BrowserWindow } = require("electron");
 const path = require("path");
 
+const isHeadless = process.env.QUQU_HEADLESS === '1';
+
 class WindowManager {
   constructor() {
     this.mainWindow = null;
     this.controlPanelWindow = null;
     this.historyWindow = null;
     this.settingsWindow = null;
+    this.isHeadless = isHeadless;
   }
 
   async createMainWindow() {
@@ -19,17 +22,23 @@ class WindowManager {
       width: 400,
       height: 500,
       frame: false,
-      transparent: true,
-      alwaysOnTop: true,
+      transparent: !this.isHeadless,
+      alwaysOnTop: !this.isHeadless,
       resizable: false,
       skipTaskbar: true,
       movable: true,
+      show: !this.isHeadless,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        backgroundThrottling: false,
         preload: path.join(__dirname, "..", "..", "preload.js"),
       },
     });
+
+    if (this.isHeadless) {
+      this.mainWindow.setAlwaysOnTop(false);
+    }
 
     const isDev = process.env.NODE_ENV === "development";
 
@@ -47,6 +56,10 @@ class WindowManager {
   }
 
   async createControlPanelWindow() {
+    if (this.isHeadless) {
+      return null;
+    }
+
     if (this.controlPanelWindow) {
       this.controlPanelWindow.focus();
       return this.controlPanelWindow;

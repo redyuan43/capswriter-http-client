@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import backendAPI, { healthCheck as backendHealthCheck, getBackendStatus as fetchBackendStatus } from '../services/backendAPI.js';
 
 // 检查是否为控制面板或设置页面
 const isControlPanelOrSettings = () => {
@@ -54,6 +55,27 @@ export const useModelStatus = () => {
   // 综合检查模型状态
   const checkModelStatus = useCallback(async () => {
     try {
+      // 优先检测远程后端健康状态（支持远程GPU后端开发方案）
+      try {
+        const ok = await backendHealthCheck();
+        if (ok) {
+          // 远程后端可用，直接标记为就绪，跳过本地模型/服务器检查
+          setModelStatus(prev => ({
+            ...prev,
+            isLoading: false,
+            isReady: true,
+            modelsDownloaded: true,
+            missingModels: [],
+            error: null,
+            progress: 100,
+            stage: 'ready'
+          }));
+          return;
+        }
+      } catch (_) {
+        // 忽略远程检查错误，回退到本地FunASR逻辑
+      }
+
       if (!window.electronAPI) {
         setModelStatus(prev => ({
           ...prev,

@@ -11,7 +11,8 @@ const SettingsPage = () => {
     ai_api_key: "",
     ai_base_url: "https://api.openai.com/v1",
     ai_model: "gpt-3.5-turbo",
-    enable_ai_optimization: true
+    enable_ai_optimization: true,
+    backend_url: "http://192.168.100.38:8000"
   });
   
   const [customModel, setCustomModel] = useState(false);
@@ -51,7 +52,8 @@ const SettingsPage = () => {
           ai_api_key: allSettings.ai_api_key || "",
           ai_base_url: allSettings.ai_base_url || "https://api.openai.com/v1",
           ai_model: allSettings.ai_model || "gpt-3.5-turbo",
-          enable_ai_optimization: allSettings.enable_ai_optimization !== false // 默认为true
+          enable_ai_optimization: allSettings.enable_ai_optimization !== false, // 默认为true
+          backend_url: allSettings.backend_url || "http://192.168.100.38:8000"
         };
         setSettings(prev => ({ ...prev, ...loadedSettings }));
         
@@ -77,6 +79,7 @@ const SettingsPage = () => {
         await window.electronAPI.setSetting('ai_base_url', settings.ai_base_url);
         await window.electronAPI.setSetting('ai_model', settings.ai_model);
         await window.electronAPI.setSetting('enable_ai_optimization', settings.enable_ai_optimization);
+        await window.electronAPI.setSetting('backend_url', settings.backend_url);
         
         toast.success("设置保存成功");
       }
@@ -241,6 +244,71 @@ const SettingsPage = () => {
                   onRequest={testAccessibilityPermission}
                   buttonText="测试权限"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* 后端配置部分 */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6">
+            <div className="p-6">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 chinese-title">后端配置</h2>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">设置远程后端服务地址（例如 http://192.168.100.38:8000）。</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">后端地址</label>
+                  <input
+                    type="text"
+                    placeholder="http://192.168.100.38:8000"
+                    className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={settings.backend_url}
+                    onChange={(e) => handleInputChange('backend_url', e.target.value)}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const url = settings.backend_url?.trim();
+                        if (!url) {
+                          toast.error('请先填写后端地址');
+                          return;
+                        }
+                        // 直接调用健康检查端点
+                        const healthRes = await fetch(`${url}/api/health`).catch(() => null);
+                        if (!healthRes || !healthRes.ok) {
+                          toast.error('健康检查失败', { description: '无法连接到后端 /api/health' });
+                          return;
+                        }
+                        const statusRes = await fetch(`${url}/api/status`).catch(() => null);
+                        if (!statusRes || !statusRes.ok) {
+                          toast.warning('健康正常，但状态接口不可用', { description: '请检查 /api/status' });
+                          return;
+                        }
+                        toast.success('后端连接正常');
+                      } catch (err) {
+                        toast.error('后端连接失败', { description: err?.message || '未知错误' });
+                      }
+                    }}
+                    className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
+                  >
+                    测试后端连接
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      // 恢复为示例
+                      handleInputChange('backend_url', 'http://192.168.100.38:8000');
+                      toast.info('已填入示例地址');
+                    }}
+                    className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md"
+                  >
+                    使用示例
+                  </button>
+                </div>
               </div>
             </div>
           </div>
