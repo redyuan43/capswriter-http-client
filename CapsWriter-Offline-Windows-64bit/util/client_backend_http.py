@@ -2,6 +2,7 @@ import json
 import uuid
 import urllib.error
 import urllib.request
+from typing import Iterator
 
 from config import ClientConfig as Config
 
@@ -100,3 +101,46 @@ def post_optimize(text: str, mode: str = "optimize") -> dict:
         "Content-Length": str(len(payload)),
     }
     return _request(url, payload, headers=headers)
+
+
+def post_audio_stream(mode: str, audio_bytes: bytes, filename: str = "audio.wav") -> Iterator[dict]:
+    url = _base_url() + "/api/asr/transcribe-and-optimize-stream"
+    mode_key = (mode or getattr(Config, "api_mode", "optimize")).lower()
+    optimize_mode = {
+        "translate": "translate",
+        "transcribe": "none",
+    }.get(mode_key, "optimize")
+    fields = {
+        "use_vad": "true",
+        "use_punc": "true",
+        "hotword": "",
+        "optimize_mode": optimize_mode,
+    }
+    data, headers = _encode_multipart(fields, {
+        "audio": (filename, audio_bytes, "audio/wav"),
+    })
+    headers["Accept"] = "text/event-stream"
+
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    timeout = getattr(Config, "http_timeout", 60)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            charset = resp.headers.get_content_charset() or "utf-8"
+            for raw_line in resp:
+                if not raw_line:
+                    continue
+                line = raw_line.decode(charset, errors="ignore").strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if not data_str:
+                    continue
+                try:
+                    yield json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"HTTP {e.code}: {detail}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"请求后端失败: {e.reason}") from e

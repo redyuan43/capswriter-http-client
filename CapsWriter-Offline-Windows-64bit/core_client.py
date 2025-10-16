@@ -18,6 +18,7 @@ from util.client_stream import stream_open, stream_close
 from util.client_shortcut_handler import bond_shortcut
 from util.client_show_tips import show_mic_tips, show_file_tips
 from util.client_hot_update import update_hot_all, observe_hot
+from util.status_overlay import overlay
 from util.client_transcribe import transcribe_files
 from util.client_adjust_srt import adjust_srt
 from util.empty_working_set import empty_current_working_set
@@ -42,6 +43,9 @@ async def main_mic():
     Cosmic.loop = asyncio.get_event_loop()
     Cosmic.queue_in = asyncio.Queue()
 
+    overlay.start()
+    overlay.show_status("CapsWriter 已准备就绪", animate=False)
+
     show_mic_tips()
     update_hot_all()
     observer = observe_hot()
@@ -65,6 +69,8 @@ async def main_mic():
 
 
 async def main_file(files: List[Path]):
+    overlay.start()
+    overlay.flash_message("文件转写模式", duration_ms=2000)
     show_file_tips()
     await transcribe_files(files, adjust_srt)
     input("\n按回车退出\n")
