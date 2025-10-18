@@ -198,6 +198,48 @@ uv sync  # 会自动下载 Python 3.11
 #### 其他常见问题
 
 - **权限问题**: 在某些系统上可能需要使用 `--user` 参数安装Python包
+
+---
+
+## 🪟 Windows 安装指南（客户端）
+
+以下脚本位于 `scripts/` 目录，均需在 PowerShell 中执行。建议以“管理员权限”运行，以保证全局热键可用。
+
+### 在线安装（推荐）
+
+- 命令: `pwsh -ExecutionPolicy Bypass -File scripts/install-client.ps1 -AddToStartup`
+- 功能:
+  - 自动检测/安装 Python 3.11（使用 winget）
+  - 创建独立虚拟环境 `.venv`
+  - 安装依赖并复制客户端到 `%LOCALAPPDATA%\CapsWriter`
+  - 生成启动脚本 `Start-CapsWriter.bat` 和桌面/启动项快捷方式
+- 启动: 双击 `%LOCALAPPDATA%\CapsWriter\Start-CapsWriter.bat`
+- 配置: 编辑 `%LOCALAPPDATA%\CapsWriter\config.py`（如 `backend_url`、热键等）
+
+可选参数:
+- 指定目录: `-InstallDir 'D:\Apps\CapsWriter'`
+- 关闭桌面快捷方式: `-CreateDesktopShortcut:$false`
+
+### 离线安装
+
+1) 在有网机器上准备离线包：
+- 命令: `pwsh -ExecutionPolicy Bypass -File scripts/prepare-offline-bundle.ps1 -OutputDir D:\capswriter-bundle`
+- 输出目录包含：`client/`、`wheelhouse/`、`requirements-offline.txt`
+
+2) 在无网机器上执行离线安装：
+- 命令: `pwsh -ExecutionPolicy Bypass -File scripts/install-client-offline.ps1 -BundleDir D:\capswriter-bundle -AddToStartup`
+- 说明: 目标主机需已安装 Python 3.11+
+
+### 卸载
+
+- 命令: `pwsh -ExecutionPolicy Bypass -File scripts/uninstall-client.ps1`
+- 内容: 停止相关进程、删除安装目录与桌面/启动项快捷方式
+
+### 常见问题（Windows）
+
+- 全局热键无效：右键 `Start-CapsWriter.bat` 以管理员身份运行
+- 依赖安装问题：检查 `%LOCALAPPDATA%\CapsWriter\.venv\Scripts\pip.exe list`
+- 服务端连不上：在 `config.py` 调整 `backend_url` 指向可达的后台服务
 - **网络问题**: 首次运行时需要下载FunASR模型，请确保网络连接正常
 - **模型路径**: 模型默认下载到 `~/.cache/modelscope/` 目录
 
