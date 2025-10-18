@@ -44,8 +44,12 @@ class _ConsoleOverlay:
 
 
 class StatusOverlay:
-    _WINDOW_WIDTH = 320
-    _WINDOW_HEIGHT = 176
+    # Overall UI scale. Set to 0.5 for ~quarter area (half width & height).
+    _UI_SCALE = 0.5
+    # Window transparency: 1.0 = opaque, lower = more transparent
+    _ALPHA = 0.7
+    _WINDOW_WIDTH = int(320 * _UI_SCALE)
+    _WINDOW_HEIGHT = int(176 * _UI_SCALE)
     _BACKGROUND = "#0f0f10" if IS_WINDOWS else "#0f172a"
     _STATUS_COLOR = "#ffffff"
     _SECONDARY_COLOR = "#d4d4d8"
@@ -64,12 +68,19 @@ class StatusOverlay:
         self._message_lines: list[str] = []
 
         self._root: Optional[tk.Tk] = None
+        # Canvas for the animated bars/dots
         self._canvas: Optional[tk.Canvas] = None
+        # Root canvas to draw rounded background panel and place children
+        self._panel_canvas: Optional[tk.Canvas] = None
+        self._panel_id: Optional[int] = None
         self._status_label: Optional[tk.Label] = None
         self._bar_ids: list[int] = []
         self._bar_centers: list[float] = []
         self._dot_ids: list[int] = []
         self._dot_centers: list[float] = []
+        self._bar_bottom_y: int = 0
+        self._bar_half_w: int = 0
+        self._dot_center_y: int = 0
 
         self._flash_after: Optional[str] = None
         self._hide_after: Optional[str] = None
@@ -134,7 +145,8 @@ class StatusOverlay:
         self._root.wm_attributes("-topmost", True)
         try:
             self._root.wm_attributes("-toolwindow", True)
-            self._root.wm_attributes("-alpha", 0.97)
+            # Slight transparency for a softer look
+            self._root.wm_attributes("-alpha", self._ALPHA)
         except Exception:
             pass
         if IS_WINDOWS:
@@ -166,65 +178,139 @@ class StatusOverlay:
     def _build_ui(self) -> None:
         assert self._root is not None
 
-        container = tk.Frame(
+        # A full-size panel canvas with transparent background to draw
+        # a rounded rectangle as the backdrop, then place children centered.
+        panel_pad = self._s(8)
+        self._panel_canvas = tk.Canvas(
             self._root,
-            bg=self._BACKGROUND,
-            padx=16,
-            pady=16,
+            bg=self._BACKGROUND,  # transparent on Windows
+            highlightthickness=0,
+            bd=0,
+            width=self._WINDOW_WIDTH,
+            height=self._WINDOW_HEIGHT,
         )
-        container.pack(fill="both", expand=True)
+        self._panel_canvas.pack(fill="both", expand=True)
 
+        # Draw rounded panel background
+        panel_bg = "#0b1220"
+        panel_border = "#334155"
+        self._panel_id = self._round_rect(
+            self._panel_canvas,
+            panel_pad,
+            panel_pad,
+            self._WINDOW_WIDTH - panel_pad,
+            self._WINDOW_HEIGHT - panel_pad,
+            r=14,
+            fill=panel_bg,
+            outline=panel_border,
+            width=1.2,
+        )
+
+        # Animation canvas (transparent to show panel)
+        canvas_size = self._s(84)
         self._canvas = tk.Canvas(
-            container,
-            width=84,
-            height=84,
-            bg=self._BACKGROUND,
+            self._root,
+            width=canvas_size,
+            height=canvas_size,
+            bg=panel_bg,  # match panel to avoid transparent holes
             highlightthickness=0,
             bd=0,
         )
-        self._canvas.pack(pady=(0, 10))
+        # Place animation centered near the top inside the panel
+        self._panel_canvas.create_window(
+            self._WINDOW_WIDTH // 2, panel_pad + self._s(22), window=self._canvas, anchor="n"
+        )
 
-        start_x = 30
-        spacing = 12
+        start_x = self._s(30)
+        spacing = self._s(12)
+        self._bar_half_w = self._s(3)
+        self._bar_bottom_y = self._s(60)
         self._bar_ids = []
         self._bar_centers = []
         for idx in range(3):
             cx = start_x + idx * spacing
-            bar = self._canvas.create_rectangle(cx - 3, 54 - 12, cx + 3, 54, fill=self._BAR_COLOR, outline="")
+            bar = self._canvas.create_rectangle(
+                cx - self._bar_half_w,
+                self._bar_bottom_y - self._s(12),
+                cx + self._bar_half_w,
+                self._bar_bottom_y,
+                fill=self._BAR_COLOR,
+                outline="",
+            )
             self._bar_ids.append(bar)
             self._bar_centers.append(cx)
 
-        self._dot_radius = 5
+        self._dot_radius = self._s(5)
         self._dot_centers = []
         self._dot_ids = []
-        dot_start = 30
-        dot_spacing = 12
+        dot_start = self._s(30)
+        dot_spacing = self._s(12)
+        self._dot_center_y = self._s(63)
         for idx in range(3):
             cx = dot_start + idx * dot_spacing
             dot = self._canvas.create_oval(
                 cx - self._dot_radius,
-                54 - self._dot_radius,
+                self._dot_center_y - self._dot_radius,
                 cx + self._dot_radius,
-                54 + self._dot_radius,
+                self._dot_center_y + self._dot_radius,
                 fill=self._BAR_COLOR,
                 outline="",
             )
             self._dot_ids.append(dot)
             self._dot_centers.append(cx)
 
-        text_frame = tk.Frame(self._root, bg=self._BACKGROUND)
-        text_frame.pack(fill="both", expand=True, padx=16)
-
+        # Status text label centered under the animation
         self._status_label = tk.Label(
-            text_frame,
+            self._root,
             text=self._status_text,
-            font=("Microsoft YaHei", 10, "bold"),
+            font=("Microsoft YaHei", 9 if self._UI_SCALE <= 0.6 else 10, "bold"),
             fg=self._STATUS_COLOR,
-            bg=self._BACKGROUND,
-            anchor="w",
-            justify="left",
+            bg=panel_bg,
+            anchor="center",
+            justify="center",
+            wraplength=self._WINDOW_WIDTH - panel_pad * 2 - self._s(18),
         )
-        self._status_label.pack(fill="x")
+        self._status_label.update_idletasks()
+        # Place text centered inside the panel below the animation
+        self._panel_canvas.create_window(
+            self._WINDOW_WIDTH // 2,
+            panel_pad + self._s(22) + canvas_size + self._s(6),
+            window=self._status_label,
+            anchor="n",
+            width=self._WINDOW_WIDTH - panel_pad * 2 - self._s(12),
+        )
+
+    def _round_rect(
+        self,
+        canvas: tk.Canvas,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        *,
+        r: int = 12,
+        **kwargs: Any,
+    ) -> int:
+        """Draw a rounded rectangle on a Canvas using a smoothed polygon.
+
+        This avoids PIL dependencies and works with transparent window backgrounds.
+        """
+        r = max(0, min(r, (x2 - x1) // 2, (y2 - y1) // 2))
+        points = [
+            x1 + r, y1,
+            x2 - r, y1,
+            x2, y1,
+            x2, y1 + r,
+            x2, y2 - r,
+            x2, y2,
+            x2 - r, y2,
+            x1 + r, y2,
+            x1, y2,
+            x1, y2 - r,
+            x1, y1 + r,
+            x1, y1,
+        ]
+        return canvas.create_polygon(points, smooth=True, splinesteps=24, **kwargs)
 
     # --------------------------- queue / animation
     def _schedule_queue_pump(self) -> None:
@@ -297,15 +383,27 @@ class StatusOverlay:
         for idx, bar in enumerate(self._bar_ids):
             phase = now * 7.5 + idx * 1.1
             amplitude = (math.sin(phase) + 1) / 2
-            height = 12 + amplitude * 18
+            height = (12 + amplitude * 18) * self._UI_SCALE
             cx = self._bar_centers[idx]
-            self._canvas.coords(bar, cx - 3, 60 - height, cx + 3, 60)
+            self._canvas.coords(
+                bar,
+                cx - self._bar_half_w,
+                self._bar_bottom_y - height,
+                cx + self._bar_half_w,
+                self._bar_bottom_y,
+            )
 
     def _reset_bars(self) -> None:
         for idx, bar in enumerate(self._bar_ids):
             cx = self._bar_centers[idx]
-            height = [16, 24, 14][idx % 3]
-            self._canvas.coords(bar, cx - 3, 60 - height, cx + 3, 60)
+            height = [16, 24, 14][idx % 3] * self._UI_SCALE
+            self._canvas.coords(
+                bar,
+                cx - self._bar_half_w,
+                self._bar_bottom_y - height,
+                cx + self._bar_half_w,
+                self._bar_bottom_y,
+            )
 
     def _animate_dots(self) -> None:
         if not self._status_animate or not self._visible:
@@ -314,14 +412,27 @@ class StatusOverlay:
         now = time.time()
         for idx, dot in enumerate(self._dot_ids):
             phase = now * 6.2 + idx * 0.9
-            offset = math.sin(phase) * 8
+            offset = math.sin(phase) * (8 * self._UI_SCALE)
             cx = self._dot_centers[idx]
-            self._canvas.coords(dot, cx - self._dot_radius, 58 + offset, cx + self._dot_radius, 68 + offset)
+            cy = self._dot_center_y + offset
+            self._canvas.coords(
+                dot,
+                cx - self._dot_radius,
+                cy - self._dot_radius,
+                cx + self._dot_radius,
+                cy + self._dot_radius,
+            )
 
     def _reset_dots(self) -> None:
         for idx, dot in enumerate(self._dot_ids):
             cx = self._dot_centers[idx]
-            self._canvas.coords(dot, cx - self._dot_radius, 58, cx + self._dot_radius, 68)
+            cy = self._dot_center_y
+            self._canvas.coords(dot, cx - self._dot_radius, cy - self._dot_radius, cx + self._dot_radius, cy + self._dot_radius)
+
+    # --------------------------- helpers
+    def _s(self, v: float) -> int:
+        """Scale helper: converts a base pixel value using UI scale."""
+        return int(round(v * self._UI_SCALE))
 
     # --------------------------- rendering helpers
     def _apply_status(self) -> None:
@@ -342,22 +453,15 @@ class StatusOverlay:
         self._render_status_line()
 
     def _append_message(self, message: str) -> None:
-        line = (message or "").strip()
-        if not line:
-            return
-        self._message_lines.append(line)
-        if len(self._message_lines) > 6:
-            self._message_lines = self._message_lines[-6:]
+        # Do not display transcript or appended lines in the overlay.
+        # Keep the UI minimal: only the status text and animation.
         self._render_status_line()
 
     def _render_status_line(self) -> None:
         if not self._status_label:
             return
-        extra = " | ".join(self._message_lines[-2:])
-        if extra:
-            self._status_label.config(text=f"{self._status_text}  |  {extra}")
-        else:
-            self._status_label.config(text=self._status_text)
+        # Always show only the current status text; no extra transcript lines.
+        self._status_label.config(text=self._status_text)
 
     # ------------------------------- visibility & hide
     def _handle_flash(self, message: str, animate: bool, duration_ms: int, color: str, style: Optional[str]) -> None:
