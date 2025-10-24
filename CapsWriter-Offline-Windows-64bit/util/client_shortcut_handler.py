@@ -146,7 +146,72 @@ def bond_shortcut():
 
     mode_hotkey = getattr(Config, "mode_hotkey", None)
     if mode_hotkey:
+        if not _register_mode_hotkey(mode_hotkey):
+            console.print("[yellow]Windows 键组合可能无法通过 keyboard 库直接注册，已启用兼容捕获模式（Alt+Win）[/]")
+            _fallback_hook_for_alt_win()
+
+
+def _register_mode_hotkey(hotkey: str) -> bool:
+    """Try multiple representations for Windows key combos.
+
+    Returns True on the first successful registration.
+    """
+    candidates = []
+    base = (hotkey or "").strip().lower().replace("win+", "windows+").replace("+win", "+windows")
+    if base:
+        candidates.append(base)
+    # reorder variants
+    if "+" in base:
+        parts = [p.strip() for p in base.split("+") if p.strip()]
+        rev = "+".join(reversed(parts))
+        if rev not in candidates:
+            candidates.append(rev)
+    # left/right windows variants
+    for side in ("left windows", "right windows"):
+        cand = base.replace("windows", side)
+        if cand not in candidates:
+            candidates.append(cand)
+        # reversed
+        if "+" in cand:
+            parts = [p.strip() for p in cand.split("+") if p.strip()]
+            rev = "+".join(reversed(parts))
+            if rev not in candidates:
+                candidates.append(rev)
+
+    for c in candidates:
         try:
-            keyboard.add_hotkey(mode_hotkey, cycle_api_mode, suppress=False)
-        except Exception as exc:
-            console.print(f"[red]\u6ce8\u518c\u6a21\u5f0f\u5207\u6362\u70ed\u952e\u5931\u8d25: {exc}[/]")
+            keyboard.add_hotkey(c, cycle_api_mode, suppress=False)
+            console.print(f"[green]模式切换热键已注册：{c}[/]")
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def _fallback_hook_for_alt_win() -> None:
+    """Fallback: detect Alt + Windows concurrently via a global hook.
+
+    Note: can't suppress the OS behavior; we only trigger our callback.
+    """
+    state = {"alt": False, "win": False, "last": 0.0}
+    alts = {"alt", "left alt", "right alt", "alt gr"}
+    wins = {"windows", "win", "left windows", "right windows"}
+
+    def handler(e: keyboard.KeyboardEvent):
+        name = (e.name or "").lower()
+        t = time.time()
+        if name in alts:
+            state["alt"] = e.event_type == "down"
+        elif name in wins:
+            state["win"] = e.event_type == "down"
+
+        if state["alt"] and state["win"]:
+            # debounce
+            if t - state["last"] > 0.6:
+                state["last"] = t
+                try:
+                    cycle_api_mode()
+                except Exception:
+                    pass
+
+    keyboard.hook(handler)
