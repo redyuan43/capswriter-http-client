@@ -4,12 +4,10 @@ import App from './App.jsx'
 import './index.css'
 import { Toaster } from './components/ui/sonner'
 
-// 检查是否在Electron环境中
 const isElectron = () => {
   return typeof window !== 'undefined' && window.electronAPI
 }
 
-// 错误边界组件
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -26,7 +24,6 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     })
     
-    // 在Electron环境中记录错误
     if (isElectron()) {
       window.electronAPI.log('error', `React Error: ${error.message}`)
     } else {
@@ -95,14 +92,11 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// 应用初始化
 function initializeApp() {
-  // 检查Electron API是否可用
   if (!isElectron()) {
-    console.warn('Electron API不可用，某些功能可能无法正常工作')
+    // Electron API not available
   }
 
-  // 设置全局错误处理
   window.addEventListener('error', (event) => {
     if (isElectron()) {
       window.electronAPI.log('error', `Global Error: ${event.error?.message || event.message}`)
@@ -115,7 +109,6 @@ function initializeApp() {
     }
   })
 
-  // 防止默认的拖拽行为
   document.addEventListener('dragover', (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -126,22 +119,18 @@ function initializeApp() {
     e.stopPropagation()
   })
 
-  // 防止右键菜单（生产环境）
   if (process.env.NODE_ENV === 'production') {
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault()
     })
   }
 
-  // 设置中文语言环境
   document.documentElement.lang = 'zh-CN'
   
-  // 添加系统主题检测
   if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     document.documentElement.classList.add('dark')
   }
 
-  // 监听系统主题变化
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     if (e.matches) {
       document.documentElement.classList.add('dark')
@@ -151,10 +140,8 @@ function initializeApp() {
   })
 }
 
-// 初始化应用
 initializeApp()
 
-// 渲染应用
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
 root.render(
@@ -166,7 +153,6 @@ root.render(
   </React.StrictMode>
 )
 
-// 开发环境下的热重载支持
 if (process.env.NODE_ENV === 'development') {
   if (import.meta.hot) {
     import.meta.hot.accept('./App.jsx', (newModule) => {
@@ -181,27 +167,5 @@ if (process.env.NODE_ENV === 'development') {
         )
       }
     })
-  }
-}
-
-// 性能监控（开发环境）
-if (process.env.NODE_ENV === 'development') {
-  // 监控渲染性能
-  const observer = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      if (entry.entryType === 'measure') {
-        console.log(`性能测量: ${entry.name} - ${entry.duration.toFixed(2)}ms`)
-      }
-    }
-  })
-  
-  observer.observe({ entryTypes: ['measure'] })
-  
-  // 监控内存使用
-  if (performance.memory) {
-    setInterval(() => {
-      const memory = performance.memory
-      console.log(`内存使用: ${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB / ${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`)
-    }, 30000) // 每30秒检查一次
   }
 }
