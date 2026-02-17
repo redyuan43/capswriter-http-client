@@ -148,7 +148,8 @@ export const useRecording = () => {
       setIsOptimizing(true);
       setTimeout(async () => {
         try {
-          const useAI = await window.electronAPI.getSetting('enable_ai_optimization', true);
+          // 暂时禁用 AI 优化
+          const useAI = false; // await window.electronAPI.getSetting('enable_ai_optimization', true);
           let finalData = { ...transcriptionData };
 
           if (useAI) {

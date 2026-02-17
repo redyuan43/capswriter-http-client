@@ -32,6 +32,7 @@ const FunASRManager = require("./src/helpers/funasrManager");
 const TrayManager = require("./src/helpers/tray");
 const HotkeyManager = require("./src/helpers/hotkeyManager");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
+const CapsLockListener = require("./src/helpers/capsLockListener");
 
 // Setup production PATH for Python
 function setupProductionPath() {
@@ -122,6 +123,7 @@ const clipboardManager = new ClipboardManager(logger);
 const funasrManager = new FunASRManager(logger);
 const trayManager = new TrayManager();
 const hotkeyManager = new HotkeyManager();
+const capsLockListener = new CapsLockListener(logger);
 
 // Ensure data directory and initialize database
 const dataDirectory = environmentManager.ensureDataDirectory();
@@ -203,6 +205,29 @@ async function startApp() {
   );
   await trayManager.createTray();
   logger.info('System tray created successfully');
+
+  // Setup Caps Lock listener
+  logger.info('Setting up Caps Lock listener...');
+  capsLockListener.setOnCapsLockDown(() => {
+    logger.info('Caps Lock pressed - showing floating ball and starting recording');
+    windowManager.showFloatingBall();
+    if (windowManager.mainWindow) {
+      windowManager.mainWindow.webContents.send('caps-lock-down');
+    }
+  });
+
+  capsLockListener.setOnCapsLockUp(() => {
+    logger.info('Caps Lock released - hiding floating ball and stopping recording');
+    if (windowManager.mainWindow) {
+      windowManager.mainWindow.webContents.send('caps-lock-up');
+    }
+    setTimeout(() => {
+      windowManager.hideFloatingBall();
+    }, 2000);
+  });
+
+  capsLockListener.start();
+  logger.info('Caps Lock listener started');
 
   logger.info('Application startup complete');
 }

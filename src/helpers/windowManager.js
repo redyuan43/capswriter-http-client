@@ -24,18 +24,20 @@ class WindowManager {
     const { width, height } = primaryDisplay.workAreaSize;
 
     this.mainWindow = new BrowserWindow({
-      width: 420,
-      height: 520,
-      x: Math.round((width - 420) / 2),
-      y: Math.round((height - 520) / 2),
-      frame: true,
-      transparent: false,
+      width: 300,
+      height: 100,
+      x: width - 340,
+      y: height - 140,
+      frame: false,
+      transparent: true,
       alwaysOnTop: true,
-      resizable: true,
-      skipTaskbar: false,
+      resizable: false,
+      skipTaskbar: true,
       movable: true,
       show: false,
-      title: 'CapsWriter 语音输入',
+      title: 'CapsWriter 悬浮球',
+      focusable: true,
+      hasShadow: false,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -71,22 +73,12 @@ class WindowManager {
       console.error('Main window failed to load:', errorCode, errorDescription);
     });
 
-    // 确保窗口显示在屏幕中央
-    this.mainWindow.center();
-    this.mainWindow.show();
-    this.mainWindow.focus();
-    this.mainWindow.restore(); // 确保窗口不是最小化状态
-    this.mainWindow.setAlwaysOnTop(true); // 置顶显示
-    
-    // 强制重绘窗口
-    setTimeout(() => {
-      this.mainWindow.focus();
-      this.mainWindow.setAlwaysOnTop(false);
-    }, 1000);
+    // 悬浮球默认隐藏，按 Caps Lock 时才显示
+    // this.mainWindow.show();
+    // this.mainWindow.focus();
 
-    // 开发模式下打开开发者工具
     if (isDev) {
-      this.mainWindow.webContents.openDevTools();
+      this.mainWindow.webContents.openDevTools({ mode: 'detach' });
       console.log('DevTools opened');
     }
 
@@ -95,6 +87,28 @@ class WindowManager {
     });
 
     return this.mainWindow;
+  }
+
+  showFloatingBall() {
+    if (this.mainWindow) {
+      const { screen } = require('electron');
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width, height } = primaryDisplay.workAreaSize;
+      
+      // 确保窗口在屏幕右下角
+      this.mainWindow.setPosition(width - 340, height - 140);
+      this.mainWindow.show();
+      this.mainWindow.focus();
+      this.mainWindow.moveTop();
+      console.log('Floating ball shown at position:', width - 340, height - 140);
+    }
+  }
+
+  hideFloatingBall() {
+    if (this.mainWindow) {
+      this.mainWindow.hide();
+      console.log('Floating ball hidden');
+    }
   }
 
   async createControlPanelWindow() {

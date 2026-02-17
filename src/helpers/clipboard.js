@@ -177,33 +177,39 @@ class ClipboardManager {
 
   async pasteWindows(originalClipboard) {
     return new Promise((resolve, reject) => {
+      // 使用更可靠的 PowerShell 方法
       const pasteProcess = spawn("powershell", [
         "-Command",
-        'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
+        `
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.SendKeys]::SendWait("^v")
+        `
       ]);
+
+      let errorOutput = "";
+      pasteProcess.stderr.on("data", (data) => {
+        errorOutput += data.toString();
+      });
 
       pasteProcess.on("close", (code) => {
         if (code === 0) {
-          // 文本粘贴成功
+          this.safeLog("✅ Windows 粘贴成功");
           setTimeout(() => {
             clipboard.writeText(originalClipboard);
+            this.safeLog("🔄 原始剪贴板内容已恢复");
           }, 100);
           resolve();
         } else {
-          reject(
-            new Error(
-              `Windows 粘贴失败，代码 ${code}。文本已复制到剪贴板。`
-            )
-          );
+          this.safeLog("❌ Windows 粘贴失败:", errorOutput);
+          // 即使失败，文本也在剪贴板中，用户可以手动粘贴
+          resolve();
         }
       });
 
       pasteProcess.on("error", (error) => {
-        reject(
-          new Error(
-            `Windows 粘贴失败: ${error.message}。文本已复制到剪贴板。`
-          )
-        );
+        this.safeLog("❌ Windows 粘贴错误:", error.message);
+        // 即使失败，文本也在剪贴板中
+        resolve();
       });
     });
   }

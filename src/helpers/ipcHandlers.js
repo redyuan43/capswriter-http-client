@@ -252,6 +252,14 @@ class IPCHandlers {
       return true;
     });
 
+    ipcMain.handle("move-window", (event, x, y) => {
+      if (this.windowManager.mainWindow) {
+        const [currentX, currentY] = this.windowManager.mainWindow.getPosition();
+        this.windowManager.mainWindow.setPosition(currentX + x, currentY + y);
+      }
+      return true;
+    });
+
     ipcMain.handle("show-control-panel", () => {
       this.windowManager.showControlPanel();
       return true;

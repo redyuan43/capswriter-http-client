@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   showWindow: () => ipcRenderer.invoke("show-window"),
   minimizeWindow: () => ipcRenderer.invoke("minimize-window"),
   closeWindow: () => ipcRenderer.invoke("close-window"),
+  moveWindow: (x, y) => ipcRenderer.invoke("move-window", x, y),
 
   // 录音相关
   startRecording: () => ipcRenderer.invoke("start-recording"),
@@ -76,6 +77,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onHotkeyTriggered: (callback) => {
     ipcRenderer.on("hotkey-triggered", callback);
     return () => ipcRenderer.removeListener("hotkey-triggered", callback);
+  },
+
+  // Caps Lock 事件监听
+  onCapsLockDown: (callback) => {
+    ipcRenderer.on("caps-lock-down", callback);
+    return () => ipcRenderer.removeListener("caps-lock-down", callback);
+  },
+
+  onCapsLockUp: (callback) => {
+    ipcRenderer.on("caps-lock-up", callback);
+    return () => ipcRenderer.removeListener("caps-lock-up", callback);
   },
 
   // 文件操作
