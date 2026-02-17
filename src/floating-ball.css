@@ -4,92 +4,129 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
   background: transparent;
+  cursor: move;
+  user-select: none;
 }
 
-.floating-panel {
-  width: 280px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12),
-              0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 16px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.floating-panel.status-recording {
-  border-color: rgba(239, 68, 68, 0.3);
-  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.2),
-              0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.floating-panel.status-processing {
-  border-color: rgba(245, 158, 11, 0.3);
-  box-shadow: 0 8px 32px rgba(245, 158, 11, 0.2),
-              0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.floating-panel.status-optimizing {
-  border-color: rgba(16, 185, 129, 0.3);
-  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.2),
-              0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.floating-panel.status-completed {
-  border-color: rgba(34, 197, 94, 0.3);
-  box-shadow: 0 8px 32px rgba(34, 197, 94, 0.2),
-              0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.floating-panel.status-error {
-  border-color: rgba(239, 68, 68, 0.3);
-  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.2),
-              0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.panel-header {
+.floating-ball-wrapper {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  background: rgba(30, 30, 30, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 30px;
+  padding: 8px 16px 8px 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+              0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  cursor: move;
 }
 
-.status-indicator {
-  width: 24px;
-  height: 24px;
+.floating-ball-wrapper:hover {
+  background: rgba(40, 40, 40, 0.95);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4),
+              0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.floating-ball {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  cursor: move;
 }
 
-.recording-dots {
-  display: flex;
-  gap: 4px;
-  align-items: center;
+.floating-ball.status-recording {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
-.recording-dots span {
-  width: 4px;
-  height: 4px;
-  background: #ef4444;
+.floating-ball.status-processing {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+}
+
+.floating-ball.status-completed {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);
+}
+
+.floating-ball.status-error {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
+}
+
+.ball-icon {
+  width: 24px;
+  height: 24px;
+  color: white;
+  pointer-events: none;
+}
+
+.recording-indicator {
+  width: 12px;
+  height: 12px;
+  background: white;
   border-radius: 50%;
   animation: recording-pulse 1s ease-in-out infinite;
+  pointer-events: none;
 }
 
-.recording-dots span:nth-child(1) {
-  animation-delay: 0s;
+.text-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  cursor: move;
 }
 
-.recording-dots span:nth-child(2) {
-  animation-delay: 0.2s;
+.status-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.recording-dots span:nth-child(3) {
-  animation-delay: 0.4s;
+.recognized-text {
+  font-size: 14px;
+  color: white;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+  margin: 0;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.placeholder-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  margin: 0;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 @keyframes recording-pulse {
@@ -100,98 +137,5 @@
   50% {
     opacity: 0.5;
     transform: scale(0.8);
-  }
-}
-
-.processing-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(245, 158, 11, 0.2);
-  border-top-color: #f59e0b;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.ai-badge {
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: bold;
-  color: white;
-  animation: ai-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes ai-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-}
-
-.status-text {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.text-display {
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 8px;
-  padding: 12px;
-  min-height: 40px;
-}
-
-.recognized-text {
-  font-size: 15px;
-  line-height: 1.6;
-  color: #111827;
-  margin: 0;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  word-break: break-word;
-}
-
-.placeholder-text {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  text-align: center;
-}
-
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  font-size: 16px;
-  color: #6b7280;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .recording-dots span,
-  .processing-spinner,
-  .ai-badge {
-    animation: none;
-  }
-  
-  .floating-panel {
-    transition: none;
   }
 }

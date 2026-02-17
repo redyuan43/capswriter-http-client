@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./floating-ball.css";
-import { toast } from "sonner";
 import { useRecording } from "./hooks/useRecording";
 import { useModelStatus } from "./hooks/useModelStatus";
 
@@ -21,6 +20,7 @@ export default function App() {
   const [realtimeText, setRealtimeText] = useState("");
   const [isCapsLockPressed, setIsCapsLockPressed] = useState(false);
   const [status, setStatus] = useState("idle");
+  const [message, setMessage] = useState("");
   
   const modelStatus = useModelStatus();
   
@@ -49,14 +49,14 @@ export default function App() {
     try {
       if (window.electronAPI) {
         await window.electronAPI.pasteText(text);
-        toast.success("文本已自动粘贴");
+        setMessage("已粘贴");
       } else {
         await navigator.clipboard.writeText(text);
-        toast.info("文本已复制到剪贴板");
+        setMessage("已复制");
       }
     } catch (error) {
       console.error("粘贴失败:", error);
-      toast.error("粘贴失败");
+      setMessage("粘贴失败");
     }
   }, []);
 
@@ -64,39 +64,21 @@ export default function App() {
     if (transcriptionResult.success && transcriptionResult.text) {
       setRealtimeText(transcriptionResult.text);
       setStatus("processing");
-      toast.success("语音识别完成");
+      setMessage("识别完成");
       
-      // 直接粘贴识别结果，不等待 AI 优化
       await safePaste(transcriptionResult.text);
       setStatus("completed");
-      toast.success("文本已粘贴");
+      setMessage("已粘贴");
       
       setTimeout(() => {
         setRealtimeText("");
         setStatus("idle");
+        setMessage("");
       }, 1500);
     }
   }, [safePaste]);
 
   const handleAIOptimizationComplete = useCallback(async (optimizedResult) => {
-    // 暂时禁用 AI 优化功能
-    // if (optimizedResult.success && optimizedResult.enhanced_by_ai && optimizedResult.text) {
-    //   setRealtimeText(optimizedResult.text);
-    //   await safePaste(optimizedResult.text);
-    //   setStatus("completed");
-    //   toast.success("AI优化完成并已粘贴");
-    //   setTimeout(() => {
-    //     setRealtimeText("");
-    //     setStatus("idle");
-    //   }, 1500);
-    // } else if (optimizedResult.success && optimizedResult.text) {
-    //   await safePaste(optimizedResult.text);
-    //   setStatus("completed");
-    //   setTimeout(() => {
-    //     setRealtimeText("");
-    //     setStatus("idle");
-    //   }, 1500);
-    // }
   }, [safePaste]);
 
   useEffect(() => {
@@ -111,26 +93,27 @@ export default function App() {
 
   const startRecordingWithCheck = useCallback(() => {
     if (modelStatus.stage === 'need_download') {
-      toast.warning("请先下载AI模型");
+      setMessage("请先下载模型");
       return;
     }
     
     if (modelStatus.stage === 'downloading' || modelStatus.stage === 'loading') {
-      toast.warning("模型正在加载中");
+      setMessage("模型加载中");
       return;
     }
     
     if (modelStatus.stage === 'error') {
-      toast.error("模型错误");
+      setMessage("模型错误");
       return;
     }
     
     if (!modelStatus.isReady) {
-      toast.warning("模型未就绪");
+      setMessage("模型未就绪");
       return;
     }
 
     setRealtimeText("");
+    setMessage("");
     setStatus("recording");
     startRecording();
   }, [modelStatus, startRecording]);
@@ -138,6 +121,7 @@ export default function App() {
   const stopRecordingWithCheck = useCallback(() => {
     if (isRecording) {
       setStatus("processing");
+      setMessage("识别中...");
       stopRecording();
     }
   }, [isRecording, stopRecording]);
@@ -163,11 +147,12 @@ export default function App() {
 
   useEffect(() => {
     if (recordingError) {
-      toast.error(recordingError);
+      setMessage(recordingError);
       setStatus("error");
       setTimeout(() => {
         setStatus("idle");
         setRealtimeText("");
+        setMessage("");
       }, 2000);
     }
   }, [recordingError]);
@@ -184,20 +169,66 @@ export default function App() {
     }
   }, [isOptimizing]);
 
+  useEffect(() => {
+    const container = document.querySelector('.floating-ball-container');
+    if (!container) return;
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    const handleMouseDown = (e) => {
+      isDragging = true;
+      startX = e.screenX;
+      startY = e.screenY;
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.screenX - startX;
+      const deltaY = e.screenY - startY;
+      
+      if (window.electronAPI && window.electronAPI.moveWindow) {
+        window.electronAPI.moveWindow(deltaX, deltaY);
+      }
+      
+      startX = e.screenX;
+      startY = e.screenY;
+    };
+
+    const handleMouseUp = () => {
+      isDragging = false;
+    };
+
+    container.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   const getStatusText = () => {
+    if (message) return message;
+    
     switch (status) {
       case "recording":
-        return "正在录音...";
+        return "录音中";
       case "processing":
-        return "正在识别...";
+        return "识别中";
       case "optimizing":
-        return "AI优化中...";
+        return "AI优化中";
       case "completed":
-        return "完成！";
+        return "完成";
       case "error":
         return "错误";
       default:
-        return "按住 Caps Lock 开始录音";
+        return "就绪";
     }
   };
 
@@ -207,45 +238,37 @@ export default function App() {
         return "status-recording";
       case "processing":
         return "status-processing";
-      case "optimizing":
-        return "status-optimizing";
       case "completed":
         return "status-completed";
       case "error":
         return "status-error";
       default:
-        return "status-idle";
+        return "";
     }
   };
 
   return (
     <div className="floating-ball-container">
-      <div className={`floating-panel ${getStatusClass()}`}>
-        <div className="panel-header">
-          <div className="status-indicator">
-            {status === "recording" && (
-              <div className="recording-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            )}
-            {status === "processing" && (
-              <div className="processing-spinner"></div>
-            )}
-            {status === "optimizing" && (
-              <div className="ai-badge">AI</div>
-            )}
-          </div>
-          <span className="status-text">{getStatusText()}</span>
+      <div className="floating-ball-wrapper">
+        <div className={`floating-ball ${getStatusClass()}`}>
+          {status === "recording" ? (
+            <div className="recording-indicator"></div>
+          ) : (
+            <svg className="ball-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          )}
         </div>
-        
-        <div className="text-display">
+        <div className="text-container">
+          <span className="status-label">{getStatusText()}</span>
           {realtimeText ? (
             <p className="recognized-text">{realtimeText}</p>
           ) : (
             <p className="placeholder-text">
-              {status === "recording" ? "请说话..." : "松开发送识别"}
+              {status === "recording" ? "请说话..." : "按住 Caps Lock"}
             </p>
           )}
         </div>

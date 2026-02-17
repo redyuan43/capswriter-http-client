@@ -10,6 +10,7 @@ class WindowManager {
     this.historyWindow = null;
     this.settingsWindow = null;
     this.isHeadless = isHeadless;
+    this.lastPosition = null;
   }
 
   async createMainWindow() {
@@ -23,11 +24,14 @@ class WindowManager {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
 
+    const defaultX = width - 180;
+    const defaultY = height - 180;
+
     this.mainWindow = new BrowserWindow({
-      width: 300,
-      height: 100,
-      x: width - 340,
-      y: height - 140,
+      width: 400,
+      height: 60,
+      x: this.lastPosition ? this.lastPosition.x : defaultX,
+      y: this.lastPosition ? this.lastPosition.y : defaultY,
       frame: false,
       transparent: true,
       alwaysOnTop: true,
@@ -36,7 +40,7 @@ class WindowManager {
       movable: true,
       show: false,
       title: 'CapsWriter 悬浮球',
-      focusable: true,
+      focusable: false,
       hasShadow: false,
       webPreferences: {
         nodeIntegration: false,
@@ -44,6 +48,13 @@ class WindowManager {
         backgroundThrottling: false,
         preload: path.join(__dirname, "..", "..", "preload.js"),
       },
+    });
+
+    this.mainWindow.on('moved', () => {
+      if (this.mainWindow) {
+        const [x, y] = this.mainWindow.getPosition();
+        this.lastPosition = { x, y };
+      }
     });
 
     if (this.isHeadless) {
@@ -91,23 +102,18 @@ class WindowManager {
 
   showFloatingBall() {
     if (this.mainWindow) {
-      const { screen } = require('electron');
-      const primaryDisplay = screen.getPrimaryDisplay();
-      const { width, height } = primaryDisplay.workAreaSize;
-      
-      // 确保窗口在屏幕右下角
-      this.mainWindow.setPosition(width - 340, height - 140);
       this.mainWindow.show();
-      this.mainWindow.focus();
       this.mainWindow.moveTop();
-      console.log('Floating ball shown at position:', width - 340, height - 140);
+      console.log('Floating ball shown');
     }
   }
 
   hideFloatingBall() {
     if (this.mainWindow) {
+      const [x, y] = this.mainWindow.getPosition();
+      this.lastPosition = { x, y };
       this.mainWindow.hide();
-      console.log('Floating ball hidden');
+      console.log('Floating ball hidden, position saved:', this.lastPosition);
     }
   }
 
