@@ -8,8 +8,9 @@ const SettingsPage = React.lazy(() => import('./settings.jsx').then(module => ({
 export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const page = urlParams.get('page');
+  const panel = urlParams.get('panel');
   
-  if (page === 'settings') {
+  if (page === 'settings' || panel === 'control') {
     return (
       <React.Suspense fallback={<div className="loading">加载设置页面...</div>}>
         <SettingsPage />
@@ -178,9 +179,11 @@ export default function App() {
     let startY = 0;
 
     const handleMouseDown = (e) => {
+      if (e.button !== 0) return;
       isDragging = true;
       startX = e.screenX;
       startY = e.screenY;
+      container.style.cursor = 'grabbing';
       e.preventDefault();
     };
 
@@ -199,17 +202,20 @@ export default function App() {
     };
 
     const handleMouseUp = () => {
-      isDragging = false;
+      if (isDragging) {
+        isDragging = false;
+        container.style.cursor = 'move';
+      }
     };
 
     container.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       container.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
 

@@ -39,8 +39,8 @@ class WindowManager {
       skipTaskbar: true,
       movable: true,
       show: false,
-      title: 'CapsWriter 悬浮球',
-      focusable: false,
+      title: '',
+      focusable: true,
       hasShadow: false,
       webPreferences: {
         nodeIntegration: false,
@@ -88,10 +88,10 @@ class WindowManager {
     // this.mainWindow.show();
     // this.mainWindow.focus();
 
-    if (isDev) {
-      this.mainWindow.webContents.openDevTools({ mode: 'detach' });
-      console.log('DevTools opened');
-    }
+    // if (isDev) {
+    //   this.mainWindow.webContents.openDevTools({ mode: 'detach' });
+    //   console.log('DevTools opened');
+    // }
 
     this.mainWindow.on("closed", () => {
       this.mainWindow = null;
