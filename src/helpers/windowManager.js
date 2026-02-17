@@ -15,19 +15,27 @@ class WindowManager {
   async createMainWindow() {
     if (this.mainWindow) {
       this.mainWindow.focus();
+      this.mainWindow.show();
       return this.mainWindow;
     }
 
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+
     this.mainWindow = new BrowserWindow({
-      width: 400,
-      height: 500,
-      frame: false,
-      transparent: !this.isHeadless,
-      alwaysOnTop: !this.isHeadless,
-      resizable: false,
-      skipTaskbar: true,
+      width: 420,
+      height: 520,
+      x: Math.round((width - 420) / 2),
+      y: Math.round((height - 520) / 2),
+      frame: true,
+      transparent: false,
+      alwaysOnTop: true,
+      resizable: true,
+      skipTaskbar: false,
       movable: true,
-      show: !this.isHeadless,
+      show: false,
+      title: 'CapsWriter 语音输入',
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -42,10 +50,44 @@ class WindowManager {
 
     const isDev = process.env.NODE_ENV === "development";
 
+    try {
+      if (isDev) {
+        await this.mainWindow.loadURL("http://localhost:5173");
+        console.log('Main window loaded URL: http://localhost:5173');
+      } else {
+        await this.mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+        console.log('Main window loaded file');
+      }
+    } catch (loadError) {
+      console.error('Failed to load main window:', loadError);
+    }
+
+    // 监听页面加载完成事件
+    this.mainWindow.webContents.on('did-finish-load', () => {
+      console.log('Main window finished loading');
+    });
+
+    this.mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error('Main window failed to load:', errorCode, errorDescription);
+    });
+
+    // 确保窗口显示在屏幕中央
+    this.mainWindow.center();
+    this.mainWindow.show();
+    this.mainWindow.focus();
+    this.mainWindow.restore(); // 确保窗口不是最小化状态
+    this.mainWindow.setAlwaysOnTop(true); // 置顶显示
+    
+    // 强制重绘窗口
+    setTimeout(() => {
+      this.mainWindow.focus();
+      this.mainWindow.setAlwaysOnTop(false);
+    }, 1000);
+
+    // 开发模式下打开开发者工具
     if (isDev) {
-      await this.mainWindow.loadURL("http://localhost:5173");
-    } else {
-      await this.mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+      this.mainWindow.webContents.openDevTools();
+      console.log('DevTools opened');
     }
 
     this.mainWindow.on("closed", () => {
